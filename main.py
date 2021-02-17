@@ -17,40 +17,42 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Archive a message convo into some format")
 
-    parser.add_argument('backup_path', type=str,
-                        help='Path to iphone backup', default=DEFAULT_BACKUP_DIR)
-    parser.add_argument('t', '--time_range', type=str,
+    parser.add_argument('-b', '--backup_dir', type=str,
+                        help='Path to iphone backup directory. Defaults to default directory on Windows.', default=DEFAULT_BACKUP_DIR)
+    parser.add_argument('-t', '--time_range', type=str,
                         help='Date range in the form 01/01/2001-01/01/2002', default='__all__')
-    parser.add_argument('c', '--contact', type=str,
+    parser.add_argument('-c', '--contact', type=str,
                         help='Select which conversation to save. Defaults to all convos', default='__all__')
     parser.add_argument('-f', '--filetype',
                         help='File format to save as', default='.csv')
 
     args = parser.parse_args()
-    return args.backup_path, args.contact, args.time_range, args.filetype
+    return args.backup_dir, args.contact, args.time_range, args.filetype
 
 
 class MessageArchiver:
-    def __init__(self, backup_path, contact_name, time_range, filetype):
-        self.backup_path = backup_path
+    def __init__(self, backup_dir, contact, time_range, filetype):
+        self.backup_dir = backup_dir
         self.filetype = filetype
         # __all__ for contact/time_range will archive all conversations/time periods respectively
-        self.contact_name = contact_name
+        self.contact = contact
         self.time_range = time_range
+
+        self.backup = None
 
     def get_backup(self):
         backups_arr = []
-        for backup in os.listdir(self.backup_path):
-            path = self.backup_path + backup
+        for backup in os.listdir(self.backup_dir):
+            path = self.backup_dir + backup
             new_dict = {'path': path,
                         'mtime': os.path.getmtime(path)}
             backups_arr.append(new_dict)
         if (len(backups_arr) == 0):
-            print('No backups found.')
-            return False
+            raise FileNotFoundError('No backups found in directory')
         if (len(backups_arr) == 1):
             print('One backup found.')
-            return backups_arr[0]
+            self.backup = backups_arr[0]
+            return
 
         print('Select a backup from which to retrieve data:')
         i = 0
@@ -63,13 +65,13 @@ class MessageArchiver:
         while len(backups_arr) < target_index < 0:
             print(f'Error, pick an integer between 0-{len(backups_arr)}')
             target_index = int(input()) - 1
-        return backups_arr[target_index]
+        self.backup = backups_arr[target_index]
 
 
 def main():
-    backup_path, contact_name, time_range, filetype = parse_args()
+    backup_dir, contact, time_range, filetype = parse_args()
     archiver = MessageArchiver(
-        backup_path, contact_name, time_range, filetype)
+        backup_dir, contact, time_range, filetype)
 
     archiver.get_backup()
 
