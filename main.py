@@ -5,6 +5,7 @@ import csv
 import time
 import getpass
 
+DEFAULT_BACKUP_DIR = f'C:/users/{getpass.getuser()}/Apple/MobileSync/Backup/'
 DATA_DICT = {'sms': ('Library/SMS/sms.db', 'message')}
 MESSAGE_DICT = {'is_from_me': 21, 'handle_id': 5,
                 'cache_roomnames': 35, 'text': 2}
@@ -16,30 +17,26 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Archive a message convo into some format")
 
-    parser.add_argument('backup_path', type=str, help='Path to iphone backup')
-    parser.add_argument('contact_name', type=str,
-                        help='Name of contact whose conversation should be archived')
-    parser.add_argument(
-        '--time_range', type=str, help='Date range in the form 01/01/2001-01/01/2002')
-    parser.add_argument(
-        '--save_all', help='Save all conversations', action='store_true')
+    parser.add_argument('backup_path', type=str,
+                        help='Path to iphone backup', default=DEFAULT_BACKUP_DIR)
+    parser.add_argument('t', '--time_range', type=str,
+                        help='Date range in the form 01/01/2001-01/01/2002', default='__all__')
+    parser.add_argument('c', '--contact', type=str,
+                        help='Select which conversation to save. Defaults to all convos', default='__all__')
+    parser.add_argument('-f', '--filetype',
+                        help='File format to save as', default='.csv')
 
     args = parser.parse_args()
-    return args.backup_path, args.contact_name, args.time_range, args.save_all
+    return args.backup_path, args.contact, args.time_range, args.filetype
 
 
 class MessageArchiver:
-    def __init__(self, backup_path, contact_name, time_range, save_all):
+    def __init__(self, backup_path, contact_name, time_range, filetype):
         self.backup_path = backup_path
-        if save_all:
-            self.contact_name = '__all__'
-        else:
-            self.contact_name = contact_name
-
-        if time_range:
-            self.time_range = time_range
-        else:
-            self.time_range = '__all__'
+        self.filetype = filetype
+        # __all__ for contact/time_range will archive all conversations/time periods respectively
+        self.contact_name = contact_name
+        self.time_range = time_range
 
     def get_backup(self):
         backups_arr = []
@@ -70,8 +67,9 @@ class MessageArchiver:
 
 
 def main():
-    backup_path, contact_name, time_range, save_all = parse_args()
-    archiver = MessageArchiver(backup_path, contact_name, time_range, save_all)
+    backup_path, contact_name, time_range, filetype = parse_args()
+    archiver = MessageArchiver(
+        backup_path, contact_name, time_range, filetype)
 
     archiver.get_backup()
 
