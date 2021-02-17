@@ -3,6 +3,7 @@ import os
 import sqlite3
 import csv
 import time
+import getpass
 
 DATA_DICT = {'sms': ('Library/SMS/sms.db', 'message')}
 MESSAGE_DICT = {'is_from_me': 21, 'handle_id': 5,
