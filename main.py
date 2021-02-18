@@ -38,7 +38,8 @@ class MessageArchiver:
         self.contact = contact
         self.time_range = time_range
 
-        self.backup = None
+        self.backup_path = None
+        self.db_path = None
 
     def get_backup(self):
         backups_arr = []
@@ -51,7 +52,7 @@ class MessageArchiver:
             raise FileNotFoundError('No backups found in directory')
         if (len(backups_arr) == 1):
             print('One backup found.')
-            self.backup = backups_arr[0]
+            self.backup_path = backups_arr[0].get('path')
             return
 
         print('Select a backup from which to retrieve data:')
@@ -65,7 +66,24 @@ class MessageArchiver:
         while len(backups_arr) < target_index < 0:
             print(f'Error, pick an integer between 0-{len(backups_arr)}')
             target_index = int(input()) - 1
-        self.backup = backups_arr[target_index]
+        self.backup_path = backups_arr[target_index].get('path')
+
+    def retrieve_db_path(self, target_db):
+        manifest = f'{self.backup_path}/Manifest.db'
+        try:
+            with sqlite3.connect(manifest) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    'SELECT * FROM Files WHERE relativePath=?', (target_db,))
+                dbs = cur.fetchall()
+                db_id = dbs[0][0]
+            for dirpath, _, filearr in os.walk(self.backup_path):
+                for filename in filearr:
+                    if filename == db_id:
+                        db_path = f"{dirpath}/{db_id}"
+            self.db_path = db_path
+        except:
+            raise FileNotFoundError('Could not open backup (encrypted?)')
 
 
 def main():
@@ -74,6 +92,7 @@ def main():
         backup_dir, contact, time_range, filetype)
 
     archiver.get_backup()
+    archiver.retrieve_db_path(DATA_DICT.get('sms')[0])
 
 
 if __name__ == "__main__":
