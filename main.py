@@ -7,6 +7,7 @@ import getpass
 
 DEFAULT_BACKUP_DIR = f'C:/users/{getpass.getuser()}/Apple/MobileSync/Backup/'
 DATA_DICT = {'sms': ('Library/SMS/sms.db', 'message')}
+CHAT_TABLE = 'chat'
 MESSAGE_DICT = {'is_from_me': 21, 'handle_id': 5,
                 'cache_roomnames': 35, 'text': 2}
 
@@ -36,9 +37,15 @@ class MessageArchiver:
         self.contact = contact
         self.time_range = time_range
 
+        self.sms_local_db_path = DATA_DICT.get('sms')[0]
+        self.sms_table_name = DATA_DICT.get('sms')[1]
+        self.MESSAGE_DICT = MESSAGE_DICT
+        self.CHAT_TABLE_NAME = CHAT_TABLE
+
         self.backup_path = None
         self.db_path = None
         self.mssgs = None
+        self.chat_table = None
 
     def get_backup(self):
         backups_arr = []
@@ -67,13 +74,13 @@ class MessageArchiver:
             target_index = int(input()) - 1
         self.backup_path = backups_arr[target_index].get('path')
 
-    def retrieve_db_path(self, target_db):
+    def retrieve_db_path(self, local_path):
         manifest = f'{self.backup_path}/Manifest.db'
         try:
             with sqlite3.connect(manifest) as conn:
                 cur = conn.cursor()
                 cur.execute(
-                    'SELECT * FROM Files WHERE relativePath=?', (target_db,))
+                    'SELECT * FROM Files WHERE relativePath=?', (local_path,))
                 dbs = cur.fetchall()
                 db_id = dbs[0][0]
             for dirpath, _, filearr in os.walk(self.backup_path):
@@ -84,11 +91,11 @@ class MessageArchiver:
         except:
             raise FileNotFoundError('Could not open backup (encrypted?)')
 
-    def retrieve_data(self, table):
+    def retrieve_all_data(self, table):
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
             cur.execute(f'SELECT * FROM {table}')
-            self.mssgs = cur.fetchall()
+            return cur.fetchall()
 
 
 def main():
@@ -97,9 +104,11 @@ def main():
         backup_dir, contact, time_range, filetype)
 
     archiver.get_backup()
-    archiver.retrieve_db_path(DATA_DICT.get('sms')[0])
-    archiver.retrieve_data(DATA_DICT.get('sms')[1])
-    print(archiver.mssgs)
+    archiver.retrieve_db_path(archiver.sms_local_db_path)
+
+    archiver.mssgs = archiver.retrieve_all_data(archiver.sms_table_name)
+    archiver.chat_table = archiver.retrieve_all_data(archiver.CHAT_TABLE_NAME)
+    print(archiver.chat_table)
 
 
 if __name__ == "__main__":
