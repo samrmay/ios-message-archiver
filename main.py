@@ -9,8 +9,6 @@ DEFAULT_BACKUP_DIR = f'C:/users/{getpass.getuser()}/Apple/MobileSync/Backup/'
 DATA_DICT = {'sms': ('Library/SMS/sms.db', 'message')}
 MESSAGE_DICT = {'is_from_me': 21, 'handle_id': 5,
                 'cache_roomnames': 35, 'text': 2}
-BOS_TOKEN = '<BOS>'
-EOS_TOKEN = '<EOS>'
 
 
 def parse_args():
@@ -40,6 +38,7 @@ class MessageArchiver:
 
         self.backup_path = None
         self.db_path = None
+        self.mssgs = None
 
     def get_backup(self):
         backups_arr = []
@@ -85,6 +84,12 @@ class MessageArchiver:
         except:
             raise FileNotFoundError('Could not open backup (encrypted?)')
 
+    def retrieve_data(self, table):
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(f'SELECT * FROM {table}')
+            self.mssgs = cur.fetchall()
+
 
 def main():
     backup_dir, contact, time_range, filetype = parse_args()
@@ -93,6 +98,8 @@ def main():
 
     archiver.get_backup()
     archiver.retrieve_db_path(DATA_DICT.get('sms')[0])
+    archiver.retrieve_data(DATA_DICT.get('sms')[1])
+    print(archiver.mssgs)
 
 
 if __name__ == "__main__":
