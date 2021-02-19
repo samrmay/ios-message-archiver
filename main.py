@@ -9,8 +9,8 @@ import re
 DEFAULT_BACKUP_DIR = f'C:/users/{getpass.getuser()}/Apple/MobileSync/Backup/'
 DATA_DICT = {'sms': ('Library/SMS/sms.db', 'message')}
 CHAT_TABLE = 'chat'
-MESSAGE_DICT = {'is_from_me': 21, 'handle_id': 5,
-                'cache_roomnames': 35, 'text': 2}
+MSSG_DICT = {'is_from_me': 21, 'handle_id': 5,
+             'cache_roomnames': 35, 'text': 2}
 NUM_PATT = re.compile(r'\+?1?(\d{10})')
 
 
@@ -54,14 +54,17 @@ class MessageArchiver:
 
         self.sms_local_db_path = DATA_DICT.get('sms')[0]
         self.sms_table_name = DATA_DICT.get('sms')[1]
-        self.MESSAGE_DICT = MESSAGE_DICT
+        self.MSSG_DICT = MSSG_DICT
         self.CHAT_TABLE_NAME = CHAT_TABLE
 
         self.backup_path = None
         self.db_path = None
         self.mssgs = None
         self.chat_table = None
+        # List of tuples containing (handle id, number, chat name)
         self.chat_handles = None
+        # Dict of convos with phone numbers as keys. Contain lists of tuples (text_content, is_from_me)
+        self.convo_dict = None
 
     def get_backup(self):
         backups_arr = []
@@ -125,22 +128,41 @@ class MessageArchiver:
             for entry in self.chat_table:
                 number = entry[6]
                 if re.match(rf"\+1{self.contact}", number):
-                    handles.append(entry[0])
+                    handles.append((entry[0], entry[6], entry[1]))
+            if len(handles) == 0:
+                raise IndexError('No chats found for that contact')
             self.chat_handles = handles
 
     def add_all_handles(self):
-        self.chat_handles = [x[0] for x in self.chat_table]
+        self.chat_handles = [(x[0], x[6], x[1]) for x in self.chat_table]
+        if len(self.chat_handles) == 0:
+            raise IndexError('No chats found')
+
+    def bin_messages(self):
+        self.convo_dict = {}
+        for tup in self.chat_handles:
+            self.convo_dict[tup[0]] = []
+
+        for mssg in self.mssgs:
+            try:
+                id_ = mssg[MSSG_DICT['handle_id']]
+                text = mssg[MSSG_DICT['text']]
+                is_from_me = mssg[MSSG_DICT['is_from_me']]
+                self.convo_dict[id_].append((text, is_from_me))
+            except KeyError:
+                pass
 
     def save_messages(self):
+        output = 'test'
         if self.filetype == '.csv':
-            self.save_as_csv()
+            self.save_as_csv(output)
         elif self.filetype == '.txt':
-            self.save_as_txt()
+            self.save_as_txt(output)
 
-    def save_as_csv(self):
+    def save_as_csv(self, output):
         pass
 
-    def save_as_txt(self):
+    def save_as_txt(self, output):
         pass
 
 
@@ -155,6 +177,7 @@ def main():
     archiver.mssgs = archiver.retrieve_all_data(archiver.sms_table_name)
     archiver.chat_table = archiver.retrieve_all_data(archiver.CHAT_TABLE_NAME)
     archiver.retrieve_target_handles()
+    archiver.bin_messages()
 
 
 if __name__ == "__main__":
