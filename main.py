@@ -4,12 +4,24 @@ import sqlite3
 import csv
 import time
 import getpass
+import re
 
 DEFAULT_BACKUP_DIR = f'C:/users/{getpass.getuser()}/Apple/MobileSync/Backup/'
 DATA_DICT = {'sms': ('Library/SMS/sms.db', 'message')}
 CHAT_TABLE = 'chat'
 MESSAGE_DICT = {'is_from_me': 21, 'handle_id': 5,
                 'cache_roomnames': 35, 'text': 2}
+NUM_PATT = re.compile(r'\+?1?(\d{10})')
+
+
+def format_contact_number(raw, arg):
+    if raw:
+        try:
+            return NUM_PATT.match(raw).group(1)
+        except:
+            argparse.ArgumentError(arg, 'Contact must be valid phone number')
+    else:
+        return None
 
 
 def parse_args():
@@ -20,13 +32,15 @@ def parse_args():
                         help='Path to iphone backup directory. Defaults to default directory on Windows.', default=DEFAULT_BACKUP_DIR)
     parser.add_argument('-t', '--time_range', type=str,
                         help='Date range in the form 01/01/2001-01/01/2002', default='__all__')
-    parser.add_argument('-c', '--contact', type=str,
-                        help='Select which conversation to save. Defaults to all convos', default='__all__')
+    contact_arg = parser.add_argument('-c', '--contact', type=str,
+                                      help='Number for which to save convos. Defaults to all', default='__all__')
     parser.add_argument('-f', '--filetype',
                         help='File format to save as', default='.csv')
 
     args = parser.parse_args()
-    return args.backup_dir, args.contact, args.time_range, args.filetype
+
+    formatted_contact = format_contact_number(args.contact, contact_arg)
+    return args.backup_dir, formatted_contact, args.time_range, args.filetype
 
 
 class MessageArchiver:
@@ -34,6 +48,7 @@ class MessageArchiver:
         self.backup_dir = backup_dir
         self.filetype = filetype
         # __all__ for contact/time_range will archive all conversations/time periods respectively
+        # Contact should be formatted to standard ten digit form (no +, leading 1)
         self.contact = contact
         self.time_range = time_range
 
@@ -46,6 +61,7 @@ class MessageArchiver:
         self.db_path = None
         self.mssgs = None
         self.chat_table = None
+        self.chat_handles = None
 
     def get_backup(self):
         backups_arr = []
@@ -97,6 +113,24 @@ class MessageArchiver:
             cur.execute(f'SELECT * FROM {table}')
             return cur.fetchall()
 
+    def retrieve_target_handles(self):
+        """
+        Retrieve handles for given contact from chat table (matches phone number with 
+        conversation handle id
+        """
+        handles = []
+        if self.contact == '__all__':
+            self.add_all_handles()
+        else:
+            for entry in self.chat_table:
+                number = entry[6]
+                if re.match(rf"\+1{self.contact}", number):
+                    handles.append(entry[0])
+            self.chat_handles = handles
+
+    def add_all_handles(self):
+        self.chat_handles = [x[0] for x in self.chat_table]
+
 
 def main():
     backup_dir, contact, time_range, filetype = parse_args()
@@ -108,7 +142,7 @@ def main():
 
     archiver.mssgs = archiver.retrieve_all_data(archiver.sms_table_name)
     archiver.chat_table = archiver.retrieve_all_data(archiver.CHAT_TABLE_NAME)
-    print(archiver.chat_table)
+    archiver.retrieve_target_handles()
 
 
 if __name__ == "__main__":
