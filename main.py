@@ -132,9 +132,9 @@ class MessageArchiver:
         self.chat_handles = [x[0] for x in self.chat_table]
 
     def save_messages(self):
-        if self.filetype = '.csv':
+        if self.filetype == '.csv':
             self.save_as_csv()
-        elif self.filetype = '.txt':
+        elif self.filetype == '.txt':
             self.save_as_txt()
 
     def save_as_csv(self):
