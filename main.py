@@ -159,17 +159,23 @@ class MessageArchiver:
             save = self.save_as_txt
 
         for key in self.convo_dict.keys():
-            save(str(key) + self.filetype, self.convo_dict[key])
+            outfile = str(key) + self.filetype
+            mssg_arr = self.convo_dict[key]
+            for tup in self.chat_handles:
+                if key == tup[0]:
+                    contact = tup[1]
+                    break
+            save(outfile, mssg_arr, contact)
 
-    def save_as_csv(self, output, mssg_arr):
+    def save_as_csv(self, output, mssg_arr, contact):
         with open(output, 'w', newline='', encoding='utf-8') as outfile:
             writer = csv.writer(outfile, delimiter=' ',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
             for mssg in mssg_arr:
-                sender = 'me' if mssg[1] == 1 else 'other'
+                sender = 'me' if mssg[1] == 1 else contact
                 writer.writerow([sender, mssg[0]])
 
-    def save_as_txt(self, output, mssg_arr):
+    def save_as_txt(self, output, mssg_arr, contact):
         pass
 
 
