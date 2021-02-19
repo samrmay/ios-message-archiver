@@ -42,11 +42,11 @@ def parse_args():
     parser.add_argument('-b', '--backup_dir', type=str,
                         help='Path to iphone backup directory. Defaults to default directory on Windows.', default=DEFAULT_BACKUP_DIR)
     parser.add_argument('-t', '--time_range', type=str,
-                        help='Date range in the form 01/01/2001-01/01/2002', default='__all__')
+                        help='Date range in the form 01/01/2001-01/01/2002, Currently dummy arg', default='__all__')
     contact_arg = parser.add_argument('-c', '--contact', type=str,
                                       help='Number for which to save convos. Defaults to all', default='__all__')
     parser.add_argument('-f', '--filetype',
-                        help='File format to save as', default='.csv')
+                        help='File format to save as. Currently dummy arg', default='.csv')
 
     args = parser.parse_args()
 
