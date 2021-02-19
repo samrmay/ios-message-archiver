@@ -118,7 +118,7 @@ class MessageArchiver:
 
     def retrieve_target_handles(self):
         """
-        Retrieve handles for given contact from chat table (matches phone number with 
+        Retrieve handles for given contact from chat table (matches phone number with
         conversation handle id
         """
         handles = []
@@ -153,16 +153,23 @@ class MessageArchiver:
                 pass
 
     def save_messages(self):
-        output = 'test'
         if self.filetype == '.csv':
-            self.save_as_csv(output)
+            save = self.save_as_csv
         elif self.filetype == '.txt':
-            self.save_as_txt(output)
+            save = self.save_as_txt
 
-    def save_as_csv(self, output):
-        pass
+        for key in self.convo_dict.keys():
+            save(str(key) + self.filetype, self.convo_dict[key])
 
-    def save_as_txt(self, output):
+    def save_as_csv(self, output, mssg_arr):
+        with open(output, 'w', newline='', encoding='utf-8') as outfile:
+            writer = csv.writer(outfile, delimiter=' ',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            for mssg in mssg_arr:
+                sender = 'me' if mssg[1] == 1 else 'other'
+                writer.writerow([sender, mssg[0]])
+
+    def save_as_txt(self, output, mssg_arr):
         pass
 
 
@@ -178,6 +185,7 @@ def main():
     archiver.chat_table = archiver.retrieve_all_data(archiver.CHAT_TABLE_NAME)
     archiver.retrieve_target_handles()
     archiver.bin_messages()
+    archiver.save_messages()
 
 
 if __name__ == "__main__":
