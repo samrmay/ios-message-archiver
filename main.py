@@ -5,12 +5,14 @@ import csv
 import time
 import getpass
 import re
+from datetime import datetime
 
 DEFAULT_BACKUP_DIR = f'C:/users/{getpass.getuser()}/Apple/MobileSync/Backup/'
 DATA_DICT = {'sms': ('Library/SMS/sms.db', 'message')}
 CHAT_TABLE = 'chat'
 MSSG_DICT = {'is_from_me': 21, 'handle_id': 5,
-             'cache_roomnames': 35, 'text': 2}
+             'cache_roomnames': 35, 'text': 2,
+             'date': 15}
 NUM_PATT = re.compile(r'\+?1?(\d{10})')
 
 
@@ -22,6 +24,15 @@ def format_contact_number(raw, arg):
             argparse.ArgumentError(arg, 'Contact must be valid phone number')
     else:
         return None
+
+
+def format_date(raw):
+    # Apple dates are stored on unix time with 31 year offset
+    raw = int(raw)
+    raw /= 10**9
+    # Add 31 years
+    raw += 31*365.24*24*60*60
+    return datetime.utcfromtimestamp(raw).strftime('%Y-%m-%d %H:%M:%S')
 
 
 def parse_args():
@@ -63,7 +74,8 @@ class MessageArchiver:
         self.chat_table = None
         # List of tuples containing (handle id, number, chat name)
         self.chat_handles = None
-        # Dict of convos with phone numbers as keys. Contain lists of tuples (text_content, is_from_me)
+        # Dict of convos with phone numbers as keys.
+        # Contain lists of tuples (text_content, is_from_me, date_sent)
         self.convo_dict = None
 
     def get_backup(self):
@@ -148,7 +160,8 @@ class MessageArchiver:
                 id_ = mssg[MSSG_DICT['handle_id']]
                 text = mssg[MSSG_DICT['text']]
                 is_from_me = mssg[MSSG_DICT['is_from_me']]
-                self.convo_dict[id_].append((text, is_from_me))
+                date = format_date(mssg[MSSG_DICT['date']])
+                self.convo_dict[id_].append((text, is_from_me, date))
             except KeyError:
                 pass
 
@@ -159,12 +172,12 @@ class MessageArchiver:
             save = self.save_as_txt
 
         for key in self.convo_dict.keys():
-            outfile = str(key) + self.filetype
             mssg_arr = self.convo_dict[key]
             for tup in self.chat_handles:
                 if key == tup[0]:
                     contact = tup[1]
                     break
+            outfile = f'{str(contact)}-{str(key)}.{self.filetype}'
             save(outfile, mssg_arr, contact)
 
     def save_as_csv(self, output, mssg_arr, contact):
@@ -173,7 +186,7 @@ class MessageArchiver:
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
             for mssg in mssg_arr:
                 sender = 'me' if mssg[1] == 1 else contact
-                writer.writerow([sender, mssg[0]])
+                writer.writerow([sender, mssg[0], mssg[2]])
 
     def save_as_txt(self, output, mssg_arr, contact):
         pass
